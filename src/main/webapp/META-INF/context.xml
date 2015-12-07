@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context path="/datasource">
+    <!-- Stuck thread warning at 20 seconds -->
+    <Valve className="org.apache.catalina.valves.StuckThreadDetectionValve" threshold="20" />
+</Context>
