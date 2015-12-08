@@ -10,8 +10,6 @@ import com.codeferm.web.TestService;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 import javax.annotation.Resource;
 import javax.ejb.embeddable.EJBContainer;
@@ -58,22 +56,23 @@ public class DataSourceWebTest1 {
     @Before
     public final void setUp() throws NamingException {
         log.info("setUp()");
-        final Map p = new HashMap();
-        p.put(Context.INITIAL_CONTEXT_FACTORY,
+        System.setProperty(Context.INITIAL_CONTEXT_FACTORY,
                 "org.apache.openejb.core.LocalInitialContextFactory");
-        p.put("openejb.embedded.initialcontext.close ", "DESTROY");
-        p.put("openejb.embedded.remotable", "true");
-        p.put("testDs", "new://Resource?type=DataSource");
-        p.put("testDs.JdbcDriver", "org.hsqldb.jdbcDriver");
-        p.put("testDs.JdbcUrl", "jdbc:hsqldb:mem:testdb");
-        p.put(EJBContainer.APP_NAME, "datasource-tomee");
-        p.put(EJBContainer.PROVIDER, "tomee-embedded");
+        System.setProperty("openejb.embedded.initialcontext.close ", "DESTROY");
+        System.setProperty("openejb.embedded.remotable", "true");
+        System.setProperty("testDs", "new://Resource?type=DataSource");
+        System.setProperty("testDs.JdbcDriver", "org.hsqldb.jdbcDriver");
+        System.setProperty("testDs.JdbcUrl", "jdbc:hsqldb:mem:testdb");
+        System.setProperty(EJBContainer.APP_NAME, "datasource-tomee");
+        System.setProperty(EJBContainer.PROVIDER, "tomee-embedded");
         // Add WAR and MDB modules
-        p.put(EJBContainer.MODULES, new File[]{Archive.archive().copyTo(
-            "WEB-INF/classes", jarLocation(TestService.class)).asDir()});
+        System.setProperty(EJBContainer.MODULES, new File[]{Archive.archive().
+            copyTo("WEB-INF/classes", jarLocation(TestService.class)).asDir()}.
+                toString());
         // Random port
-        p.put(EmbeddedTomEEContainer.TOMEE_EJBCONTAINER_HTTP_PORT, "-1");
-        container = EJBContainer.createEJBContainer(p);
+        System.setProperty(EmbeddedTomEEContainer.TOMEE_EJBCONTAINER_HTTP_PORT,
+                "-1");
+        container = EJBContainer.createEJBContainer();
         try {
             container.getContext().bind("inject", this);
         } catch (NamingException e) {
