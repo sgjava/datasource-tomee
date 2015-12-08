@@ -8,14 +8,21 @@ package com.codeferm.datasource;
 
 import com.codeferm.web.TestService;
 import java.io.File;
-import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
-import javax.annotation.Resource;
 import javax.ejb.embeddable.EJBContainer;
 import javax.naming.Context;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.MapListHandler;
 import static org.apache.openejb.loader.JarLocation.jarLocation;
 import org.apache.tomee.embedded.EmbeddedTomEEContainer;
 import org.apache.ziplock.Archive;
@@ -42,11 +49,6 @@ public class DataSourceWebTest1 {
      * EJB container.
      */
     private static EJBContainer container;
-    /**
-     * Injected DataSource.
-     */
-    @Resource
-    private DataSource testDs;
 
     /**
      * Set up. ${ehcache.listenerPort}
@@ -56,28 +58,22 @@ public class DataSourceWebTest1 {
     @Before
     public final void setUp() throws NamingException {
         log.info("setUp()");
-        System.setProperty(Context.INITIAL_CONTEXT_FACTORY,
-                "org.apache.openejb.core.LocalInitialContextFactory");
-        System.setProperty("openejb.embedded.initialcontext.close ", "DESTROY");
-        System.setProperty("openejb.embedded.remotable", "true");
         System.setProperty("testDs", "new://Resource?type=DataSource");
         System.setProperty("testDs.JdbcDriver", "org.hsqldb.jdbcDriver");
         System.setProperty("testDs.JdbcUrl", "jdbc:hsqldb:mem:testdb");
-        System.setProperty(EJBContainer.APP_NAME, "datasource-tomee");
-        System.setProperty(EJBContainer.PROVIDER, "tomee-embedded");
+        final Map p = new HashMap();
+        p.put(Context.INITIAL_CONTEXT_FACTORY,
+                "org.apache.openejb.core.LocalInitialContextFactory");
+        p.put("openejb.embedded.initialcontext.close ", "DESTROY");
+        p.put("openejb.embedded.remotable", "true");
+        p.put(EJBContainer.APP_NAME, "datasource-tomee");
+        p.put(EJBContainer.PROVIDER, "tomee-embedded");
         // Add WAR and MDB modules
-        System.setProperty(EJBContainer.MODULES, new File[]{Archive.archive().
-            copyTo("WEB-INF/classes", jarLocation(TestService.class)).asDir()}.
-                toString());
+        p.put(EJBContainer.MODULES, new File[]{Archive.archive().copyTo(
+            "WEB-INF/classes", jarLocation(TestService.class)).asDir()});
         // Random port
-        System.setProperty(EmbeddedTomEEContainer.TOMEE_EJBCONTAINER_HTTP_PORT,
-                "-1");
-        container = EJBContainer.createEJBContainer();
-        try {
-            container.getContext().bind("inject", this);
-        } catch (NamingException e) {
-            log.severe(e.getMessage());
-        }
+        p.put(EmbeddedTomEEContainer.TOMEE_EJBCONTAINER_HTTP_PORT, "-1");
+        container = EJBContainer.createEJBContainer(p);
     }
 
     /**
@@ -87,7 +83,6 @@ public class DataSourceWebTest1 {
      */
     @After
     public final void tearDown() throws NamingException {
-        container.getContext().unbind("inject");
         container.close();
     }
 
@@ -97,9 +92,45 @@ public class DataSourceWebTest1 {
      * @throws SQLException Possible Exception
      */
     @Test
-    public final void dataSource() throws SQLException {
-        log.info("dataSource");
+    public final void dataSource() throws SQLException, NamingException {
+        log.info("dataSource()");
+        final DataSource testDs = (DataSource) container.getContext().lookup(
+                "openejb:Resource/testDs");
         assertNotNull("dataSource should not be null", testDs);
-        Connection connection = testDs.getConnection();
+        QueryRunner queryRunner = new QueryRunner(testDs);
+        // Create table
+        queryRunner.update(
+                "create table test1 (id integer not null, username varchar(25), primary key (id))");
+        // Insert some records
+        queryRunner.update("insert into test1 (id, username) values(?, ?)", 0,
+                "jsmith");
+        queryRunner.update("insert into test1 (id, username) values(?, ?)", 1,
+                "pkeller");
+        queryRunner.update("insert into test1 (id, username) values(?, ?)", 2,
+                "bdover");
+        // Return result set as List of Maps
+        List<Map<String, Object>> results = queryRunner.query(
+                "select * from test1", new MapListHandler());
+        // Display results
+        results.stream().forEach((result) -> {
+            log.info(String.format("Map: %s", result));
+        });
+    }
+
+    /**
+     * Test MAS getCustomerSTBData call with bad account.
+     */
+    @Test
+    public final void getData() {
+        log.info("getData()");
+        final String url = "http://127.0.0.1:" + System.getProperty(
+                EmbeddedTomEEContainer.TOMEE_EJBCONTAINER_HTTP_PORT)
+                + "/datasource-tomee/v1/test/";
+        // Set up web client with logging filter
+        final Client client = ClientBuilder.newClient();
+        final String response = client.target(url).request().post(Entity.entity(
+                "test", MediaType.APPLICATION_JSON), String.class);
+        assertNotNull(response);
+        log.info(String.format("Response: %s", response));
     }
 }
