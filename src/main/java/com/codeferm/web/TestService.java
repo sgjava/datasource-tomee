@@ -22,7 +22,7 @@ import javax.ws.rs.core.Response;
  * @version 1.0.0
  * @since 1.0.0
  */
-@Path("/mas/v1")
+@Path("/v1")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class TestService {

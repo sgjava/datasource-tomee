@@ -33,12 +33,12 @@ import org.junit.Test;
  * @version 1.0.0
  * @since 1.0.0
  */
-public class DataSourceWebTest {
+public class DataSourceWebTest1 {
 
     /**
      * Logger.
      */
-    private static final Logger log = Logger.getLogger(DataSourceWebTest.class.
+    private static final Logger log = Logger.getLogger(DataSourceWebTest1.class.
             getName());
     /**
      * EJB container.
@@ -48,7 +48,7 @@ public class DataSourceWebTest {
      * Injected DataSource.
      */
     @Resource
-    private DataSource dataSource;
+    private DataSource testDs;
 
     /**
      * Set up. ${ehcache.listenerPort}
@@ -58,16 +58,15 @@ public class DataSourceWebTest {
     @Before
     public final void setUp() throws NamingException {
         log.info("setUp()");
-        log.info("setUpClass()");
         final Map p = new HashMap();
         p.put(Context.INITIAL_CONTEXT_FACTORY,
                 "org.apache.openejb.core.LocalInitialContextFactory");
         p.put("openejb.embedded.initialcontext.close ", "DESTROY");
         p.put("openejb.embedded.remotable", "true");
-        p.put("dataSource", "new://Resource?type=DataSource");
-        p.put("dataSource.JdbcDriver", "org.hsqldb.jdbcDriver");
-        p.put("dataSource.JdbcUrl", "jdbc:hsqldb:mem:moviedb");
-        p.put(EJBContainer.APP_NAME, "datasource");
+        p.put("testDs", "new://Resource?type=DataSource");
+        p.put("testDs.JdbcDriver", "org.hsqldb.jdbcDriver");
+        p.put("testDs.JdbcUrl", "jdbc:hsqldb:mem:testdb");
+        p.put(EJBContainer.APP_NAME, "datasource-tomee");
         p.put(EJBContainer.PROVIDER, "tomee-embedded");
         // Add WAR and MDB modules
         p.put(EJBContainer.MODULES, new File[]{Archive.archive().copyTo(
@@ -101,7 +100,7 @@ public class DataSourceWebTest {
     @Test
     public final void dataSource() throws SQLException {
         log.info("dataSource");
-        assertNotNull("dataSource should not be null", dataSource);
-        Connection connection = dataSource.getConnection();
+        assertNotNull("dataSource should not be null", testDs);
+        Connection connection = testDs.getConnection();
     }
 }

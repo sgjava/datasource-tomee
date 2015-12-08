@@ -41,7 +41,7 @@ public class DataSourceTest {
      * Injected DataSource.
      */
     @Resource
-    private DataSource dataSource;
+    private DataSource testDs;
 
     /**
      * Set up. ${ehcache.listenerPort}
@@ -52,9 +52,9 @@ public class DataSourceTest {
     public final void setUp() throws NamingException {
         log.info("setUp()");
         Properties p = new Properties();
-        p.put("dataSource", "new://Resource?type=DataSource");
-        p.put("dataSource.JdbcDriver", "org.hsqldb.jdbcDriver");
-        p.put("dataSource.JdbcUrl", "jdbc:hsqldb:mem:moviedb");
+        p.put("testDs", "new://Resource?type=DataSource");
+        p.put("testDs.JdbcDriver", "org.hsqldb.jdbcDriver");
+        p.put("testDs.JdbcUrl", "jdbc:hsqldb:mem:testdb");
         container = EJBContainer.createEJBContainer(p);
         container.getContext().bind("inject", this);
     }
@@ -78,7 +78,7 @@ public class DataSourceTest {
     @Test
     public final void dataSource() throws SQLException {
         log.info("dataSource");
-        assertNotNull("dataSource should not be null", dataSource);
-        Connection connection = dataSource.getConnection();
+        assertNotNull("dataSource should not be null", testDs);
+        Connection connection = testDs.getConnection();
     }
 }
