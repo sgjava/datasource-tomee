@@ -104,5 +104,11 @@ sgoldsmith@codeferm.com
             <version>1.9.13</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>commons-dbutils</groupId>
+            <artifactId>commons-dbutils</artifactId>
+            <version>1.6</version>
+            <scope>test</scope>
+        </dependency>        
     </dependencies>
 </project>

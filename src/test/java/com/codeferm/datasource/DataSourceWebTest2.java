@@ -7,12 +7,15 @@
 package com.codeferm.datasource;
 
 import java.io.File;
-import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.tomee.embedded.Configuration;
 import org.apache.tomee.embedded.Container;
 import org.junit.AfterClass;
@@ -33,7 +36,8 @@ public class DataSourceWebTest2 {
      * Logger.
      */
     //CHECKSTYLE:OFF ConstantName - Logger OK to be static final and lower case
-    private static final Logger log = Logger.getLogger(DataSourceWebTest2.class.getName());
+    private static final Logger log = Logger.getLogger(DataSourceWebTest2.class.
+            getName());
     //CHECKSTYLE:ON ConstantName
     /**
      * TomEE container.
@@ -78,9 +82,27 @@ public class DataSourceWebTest2 {
     @Test
     public final void dataSource() throws NamingException, SQLException {
         log.info("dataSource");
-        final DataSource testDs = (DataSource) container.getJndiContext().lookup("openejb:Resource/testDs");
+        final DataSource testDs = (DataSource) container.getJndiContext().
+                lookup("openejb:Resource/testDs");
         assertNotNull("dataSource should not be null", testDs);
-        Connection connection = testDs.getConnection();
+        QueryRunner queryRunner = new QueryRunner(testDs);
+        // Create table
+        queryRunner.update(
+                "create table test1 (id integer not null, username varchar(25), primary key (id))");
+        // Insert some records
+        queryRunner.update("insert into test1 (id, username) values(?, ?)", 0,
+                "jsmith");
+        queryRunner.update("insert into test1 (id, username) values(?, ?)", 1,
+                "pkeller");
+        queryRunner.update("insert into test1 (id, username) values(?, ?)", 2,
+                "bdover");
+        // Return result set as List of Maps
+        List<Map<String, Object>> results = queryRunner.query(
+                "select * from test1", new MapListHandler());
+        // Display results
+        results.stream().forEach((result) -> {
+            log.info(String.format("Map: %s", result));
+        });
     }
 
     /**
