@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Steven P. Goldsmith. All rights reserved.
  *
- * Created by Steven P. Goldsmith on December 7, 2015
+ * Created by Steven P. Goldsmith on December 8, 2015
  * sgoldsmith@codeferm.com
  */
 package com.codeferm.datasource;
@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import javax.annotation.Resource;
 import javax.ejb.embeddable.EJBContainer;
 import javax.naming.Context;
 import javax.naming.NamingException;
@@ -27,40 +28,54 @@ import static org.apache.openejb.loader.JarLocation.jarLocation;
 import org.apache.tomee.embedded.EmbeddedTomEEContainer;
 import org.apache.ziplock.Archive;
 import org.junit.After;
+import org.junit.AfterClass;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
- * Test DataSource resource injected into test.
+ * Resource injection fails with tomee-embedded provider. See
+ * https://issues.apache.org/jira/browse/TOMEE-1675
+ *
+ * Remove @Ignore to run and see assertion fail.
  *
  * @author sgoldsmith
  * @version 1.0.0
  * @since 1.0.0
  */
-public class DataSourceWebTest1 {
+@Ignore
+public class DataSourceInjectionTest3 {
 
     /**
      * Logger.
      */
-    private static final Logger log = Logger.getLogger(DataSourceWebTest1.class.
+    private static final Logger log = Logger.getLogger(
+            DataSourceInjectionTest3.class.
             getName());
     /**
      * EJB container.
      */
     private static EJBContainer container;
+    /**
+     * Injected DataSource.
+     */
+    @Resource
+    private DataSource testDs;
 
     /**
-     * Set up. ${ehcache.listenerPort}
-     *
-     * @throws NamingException possible exception.
+     * Start EBJ container.
      */
-    @Before
-    public final void setUp() throws NamingException {
-        log.info("setUp()");
+    @BeforeClass
+    public static void start() {
+        log.info("start()");
+        // These will not be picked up by container properties
         System.setProperty("testDs", "new://Resource?type=DataSource");
         System.setProperty("testDs.JdbcDriver", "org.hsqldb.jdbcDriver");
         System.setProperty("testDs.JdbcUrl", "jdbc:hsqldb:mem:testdb");
+        // Container properties
         final Map p = new HashMap();
         p.put(Context.INITIAL_CONTEXT_FACTORY,
                 "org.apache.openejb.core.LocalInitialContextFactory");
@@ -77,26 +92,46 @@ public class DataSourceWebTest1 {
     }
 
     /**
-     * Tear down.
+     * Inject resources.
+     *
+     * @throws NamingException Possible exception.
+     */
+    @Before
+    public final void inject() throws NamingException {
+        log.info("inject()");
+        container.getContext().bind("inject", this);
+    }
+
+    /**
+     * Unbind resources.
      *
      * @throws NamingException Possible exception.
      */
     @After
-    public final void tearDown() throws NamingException {
+    public final void unbind() throws NamingException {
+        log.info("unbind()");
+        container.getContext().unbind("inject");
+    }
+
+    /**
+     * Stop EJB container.
+     */
+    @AfterClass
+    public static void stop() {
+        log.info("stop()");
         container.close();
     }
 
     /**
-     * Test DataSource injection.
+     * Test DataSource lookup.
      *
-     * @throws SQLException Possible Exception
+     * @throws NamingException Possible exception.
+     * @throws SQLException Possible exception.
      */
     @Test
-    public final void dataSource() throws SQLException, NamingException {
+    public final void dataSource() throws NamingException, SQLException {
         log.info("dataSource()");
-        final DataSource testDs = (DataSource) container.getContext().lookup(
-                "openejb:Resource/testDs");
-        assertNotNull("dataSource should not be null", testDs);
+        assertNotNull("testDs should not be null", testDs);
         QueryRunner queryRunner = new QueryRunner(testDs);
         // Create table
         queryRunner.update(
@@ -111,6 +146,8 @@ public class DataSourceWebTest1 {
         // Return result set as List of Maps
         List<Map<String, Object>> results = queryRunner.query(
                 "select * from test1", new MapListHandler());
+        assertNotNull("results should not be null", results);
+        assertTrue("Must be 3 results", results.size() == 3);
         // Display results
         results.stream().forEach((result) -> {
             log.info(String.format("Map: %s", result));
@@ -118,11 +155,11 @@ public class DataSourceWebTest1 {
     }
 
     /**
-     * Test MAS getCustomerSTBData call with bad account.
+     * Test simple JAX-RS service to make sure web container working as well.
      */
     @Test
-    public final void getData() {
-        log.info("getData()");
+    public final void web() {
+        log.info("web()");
         final String url = "http://127.0.0.1:" + System.getProperty(
                 EmbeddedTomEEContainer.TOMEE_EJBCONTAINER_HTTP_PORT)
                 + "/datasource-tomee/v1/test/";
@@ -131,6 +168,7 @@ public class DataSourceWebTest1 {
         final String response = client.target(url).request().post(Entity.entity(
                 "test", MediaType.APPLICATION_JSON), String.class);
         assertNotNull(response);
+        assertTrue("response must be test", response.equals("test"));
         log.info(String.format("Response: %s", response));
     }
 }
